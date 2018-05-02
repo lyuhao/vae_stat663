@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 # Gaussian MLP as encoder
-def gaussian_MLP_encoder(x, nb_filters,n_hidden, n_output, keep_prob):
+def encoder(x, nb_filters,n_hidden, n_output, keep_prob):
     with tf.variable_scope("gaussian_MLP_encoder"):
         # initializers
 
@@ -70,7 +70,7 @@ def gaussian_MLP_encoder(x, nb_filters,n_hidden, n_output, keep_prob):
     return mean, stddev
 
 # Bernoulli MLP as decoder
-def bernoulli_MLP_decoder(z, nb_filters, n_hidden, n_output, keep_prob, reuse=False):
+def decoder(z, nb_filters, n_hidden, n_output, keep_prob, reuse=False):
 
     with tf.variable_scope("bernoulli_MLP_decoder", reuse=reuse):
         # initializers
@@ -131,27 +131,22 @@ def bernoulli_MLP_decoder(z, nb_filters, n_hidden, n_output, keep_prob, reuse=Fa
             data_format='channels_last',
             activation=tf.nn.sigmoid
             )
-        # output layer-mean
-       # wo = tf.get_variable('wo', [h1.get_shape()[1], n_output], initializer=w_init)
-       # bo = tf.get_variable('bo', [n_output], initializer=b_init)
-       # y = tf.sigmoid(tf.matmul(h1, wo) + bo)
+
     y = tf.reshape(y,[-1,784])
     return y
 
-# Gateway
+
 def autoencoder(x_hat, x, dim_img, dim_z, n_hidden, keep_prob):
 
-    # encoding
-    mu, sigma = gaussian_MLP_encoder(x_hat, 64, n_hidden, dim_z, keep_prob)
 
-    # sampling by re-parameterization technique
+    mu, sigma = encoder(x_hat, 64, n_hidden, dim_z, keep_prob)
+
+
     z = mu + sigma * tf.random_normal(tf.shape(mu), 0, 1, dtype=tf.float32)
 
-    # decoding
     y = bernoulli_MLP_decoder(z, 64,n_hidden, dim_img, keep_prob)
     y = tf.clip_by_value(y, 1e-8, 1 - 1e-8)
 
-    # loss
     marginal_likelihood = tf.reduce_sum(x * tf.log(y) + (1 - x) * tf.log(1 - y), 1)
     KL_divergence = 0.5 * tf.reduce_sum(tf.square(mu) + tf.square(sigma) - tf.log(1e-8 + tf.square(sigma)) - 1, 1)
 
@@ -160,12 +155,5 @@ def autoencoder(x_hat, x, dim_img, dim_z, n_hidden, keep_prob):
 
     ELBO = marginal_likelihood - KL_divergence
 
-    loss = -ELBO
 
-    return y, z, loss, -marginal_likelihood, KL_divergence
-
-def decoder(z, dim_img, n_hidden):
-
-    y = bernoulli_MLP_decoder(z, 64,n_hidden, dim_img, 1.0, reuse=True)
-
-    return y
+    return y, z, -ELBO, -marginal_likelihood, KL_divergence
