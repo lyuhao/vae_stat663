@@ -1,4 +1,4 @@
- import tensorflow as tf
+import tensorflow as tf
 #### vae implementation with the reference https://github.com/hwalsuklee/tensorflow-mnist-VAE/blob/
 def encoder(x, n_hidden, n_output, keep_prob):
     with tf.variable_scope("gaussian_MLP_encoder"):
